@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catégories</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+</head>
+<body>
+    <button class="toggle-btn">☰</button>
+    <nav class="sidebar">
+        <img th:src="${currentUser.profilePicture != null} ? ${currentUser.profilePicture} : '/uploads/default.png'" class="profile-pic" alt="Photo de profil">
+        <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" th:href="@{/tasks}">Tâches</a></li>
+            <li class="nav-item"><a class="nav-link active" th:href="@{/categories}">Catégories</a></li>
+            <li class="nav-item"><a class="nav-link" th:href="@{/profile}">Profil</a></li>
+            <li class="nav-item"><a class="nav-link" th:href="@{/logout}">Déconnexion</a></li>
+        </ul>
+    </nav>
+    <div class="main-content">
+        <div class="container mt-4">
+            <h1>Mes Catégories</h1>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form th:action="@{/categories}" th:object="${category}" method="post">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nom de la catégorie</label>
+                            <input type="text" th:field="*{name}" class="form-control" id="name" placeholder="Ex. Travail" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Ajouter</button>
+                    </form>
+                </div>
+            </div>
+            <div>
+                <h3>Liste des catégories</h3>
+                <div th:if="${categories.isEmpty()}" class="alert alert-info">
+                    Aucune catégorie pour le moment.
+                </div>
+                <ul class="list-group">
+                    <li th:each="category : ${categories}" class="list-group-item d-flex justify-content-between align-items-center">
+                        <span th:text="${category.name}"></span>
+                        <form th:action="@{/categories/delete/{id}(id=${category.id})}" method="post">
+                            <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
+                        </form>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/script.js}"></script>
+</body>
+</html>
