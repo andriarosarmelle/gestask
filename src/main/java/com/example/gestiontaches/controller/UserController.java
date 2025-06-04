@@ -6,10 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -28,8 +25,9 @@ public class UserController {
     }
 
     @PostMapping("/update")
-    public String updateProfile(@RequestParam("profilePicture") MultipartFile file, Authentication auth) throws IOException {
-        User user = userService.findByUsername(auth.getName());
+    public String updateProfile(@RequestParam("profilePicture") MultipartFile file, 
+                              Authentication authentication) throws IOException {
+        User user = userService.findByUsername(authentication.getName());
         userService.updateProfilePicture(user, file);
         return "redirect:/user/profile";
     }

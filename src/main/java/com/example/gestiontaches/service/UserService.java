@@ -17,10 +17,17 @@ import java.util.UUID;
 public class UserService {
     @Autowired
     private UserRepository userRepository;
+    
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
     public User saveUser(User user) {
+        // Vérifier si l'utilisateur existe déjà
+        if (userRepository.findByUsername(user.getUsername()) != null) {
+            throw new RuntimeException("Le nom d'utilisateur existe déjà");
+        }
+        
+        // Encoder le mot de passe avant de sauvegarder
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
