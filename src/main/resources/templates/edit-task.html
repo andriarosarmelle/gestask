@@ -24,6 +24,7 @@
             <div class="card">
                 <div class="card-body">
                     <form th:action="@{/tasks}" th:object="${task}" method="post">
+                        <input type="hidden" th:field="*{id}"/>
                         <div class="mb-3">
                             <label for="title" class="form-label">Titre</label>
                             <input type="text" th:field="*{title}" class="form-control" id="title" required>
@@ -40,9 +41,8 @@
                             <label for="priority" class="form-label">Priorité</label>
                             <select th:field="*{priority}" class="form-select" id="priority">
                                 <option value="">Aucune</option>
-                                <option value="LOW">Basse</option>
-                                <option value="MEDIUM">Moyenne</option>
-                                <option value="HIGH">Haute</option>
+                                <option th:each="priority : ${T(com.example.gestiontaches.model.Task$Priority).values()}"
+                                        th:value="${priority}" th:text="${priority}"></option>
                             </select>
                         </div>
                         <div class="mb-3">
