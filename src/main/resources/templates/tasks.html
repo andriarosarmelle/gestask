@@ -10,7 +10,9 @@
 <body>
     <button class="toggle-btn">☰</button>
     <nav class="sidebar">
-        <img th:src="${currentUser.profilePicture != null} ? ${currentUser.profilePicture} : '/uploads/default.png'" class="profile-pic" alt="Photo de profil">
+        <img th:src="${currentUser != null && currentUser.profilePicture != null} ? ${currentUser.profilePicture} : '/uploads/default.png'" 
+             class="profile-pic" 
+             alt="profil">
         <ul class="nav flex-column">
             <li class="nav-item"><a class="nav-link active" th:href="@{/tasks}">Tâches</a></li>
             <li class="nav-item"><a class="nav-link" th:href="@{/categories}">Catégories</a></li>
@@ -21,10 +23,17 @@
     <div class="main-content">
         <div class="container mt-4">
             <h1>Mes Tâches</h1>
+            
+            <!-- Barre de recherche et boutons -->
             <div class="row mb-4">
                 <div class="col-md-6">
                     <form th:action="@{/tasks}" method="get" class="input-group">
-                        <input type="text" name="search" class="form-control" placeholder="Rechercher une tâche..." th:value="${param.search}">
+                        <input type="text" 
+                               id="searchInput"
+                               name="search" 
+                               class="form-control" 
+                               placeholder="Rechercher une tâche..." 
+                               th:value="${param.search}">
                         <button type="submit" class="btn btn-primary">Rechercher</button>
                     </form>
                 </div>
@@ -33,45 +42,139 @@
                     <a th:href="@{/tasks/export}" class="btn btn-info">Exporter en CSV</a>
                 </div>
             </div>
+
+            <!-- Options de tri -->
             <div class="mb-3">
-                <label class="me-2">Trier par :</label>
-                <a th:href="@{/tasks}" class="btn btn-outline-secondary btn-sm me-2" th:classappend="${param.sort == null} ? 'active' : ''">Aucun</a>
-                <a th:href="@{/tasks(sort='date')}" class="btn btn-outline-secondary btn-sm me-2" th:classappend="${param.sort == 'date'} ? 'active' : ''">Date</a>
-                <a th:href="@{/tasks(sort='priority')}" class="btn btn-outline-secondary btn-sm" th:classappend="${param.sort == 'priority'} ? 'active' : ''">Priorité</a>
+                <span id="sort-label" class="me-2">Trier par :</span>
+                <div class="btn-group" role="group" aria-labelledby="sort-label">
+                    <a th:href="@{/tasks}" 
+                       class="btn btn-outline-secondary btn-sm" 
+                       th:classappend="${param.sort == null} ? 'active' : ''">Aucun</a>
+                    <a th:href="@{/tasks(sort='due_date')}" 
+                       class="btn btn-outline-secondary btn-sm" 
+                       th:classappend="${param.sort == 'due_date'} ? 'active' : ''">Date</a>
+                    <a th:href="@{/tasks(sort='priority')}" 
+                       class="btn btn-outline-secondary btn-sm" 
+                       th:classappend="${param.sort == 'priority'} ? 'active' : ''">Priorité</a>
+                </div>
             </div>
-            <div th:if="${tasks.isEmpty()}" class="alert alert-info">
+
+            <!-- Message si aucune tâche -->
+            <div th:if="${#lists.isEmpty(tasks)}" class="alert alert-info">
                 Aucune tâche pour le moment.
             </div>
-            <div th:unless="${tasks.isEmpty()}" class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Titre</th>
-                            <th>Description</th>
-                            <th>Date d'échéance</th>
-                            <th>Priorité</th>
-                            <th>État</th>
-                            <th>Catégorie</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="task : ${tasks}">
-                            <td th:text="${task.title}"></td>
-                            <td th:text="${task.description}"></td>
-                            <td th:text="${task.dueDate} ? ${#temporals.format(task.dueDate, 'dd/MM/yyyy HH:mm')} : '-'"></td>
-                            <td th:text="${task.priority} ? ${task.priority} : '-'"></td>
-                            <td th:text="${task.completed} ? 'Terminée' : 'En cours'"></td>
-                            <td th:text="${task.category != null} ? ${task.category.name} : '-'"></td>
-                            <td>
-                                <a th:href="@{/tasks/edit/{id}(id=${task.id})}" class="btn btn-warning btn-sm">Éditer</a>
-                                <form th:action="@{/tasks/delete/{id}(id=${task.id})}" method="post" style="display:inline;">
-                                    <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
-                                </form>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+
+            <!-- Tâches en retard -->
+            <div th:if="${!#lists.isEmpty(tasks)}" class="mb-5">
+                <h2 class="h4 text-danger mb-3">Tâches en retard</h2>
+                <div class="table-responsive" th:with="now=${#temporals.createNow()}">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Titre</th>
+                                <th>Description</th>
+                                <th>Date d'échéance</th>
+                                <th>Priorité</th>
+                                <th>Catégorie</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="task : ${tasks}" 
+                                th:if="${!task.completed && task.dueDate != null && task.dueDate.isBefore(now)}">
+                                <td th:text="${task.title}">-</td>
+                                <td th:text="${task.description}">-</td>
+                                <td class="text-danger" th:text="${#temporals.format(task.dueDate, 'dd/MM/yyyy HH:mm')}">-</td>
+                                <td th:text="${task.priority}">-</td>
+                                <td th:text="${task.category != null ? task.category.name : '-'}">-</td>
+                                <td>
+                                    <a th:href="@{/tasks/edit/{id}(id=${task.id})}" 
+                                       class="btn btn-warning btn-sm">Éditer</a>
+                                    <form th:action="@{/tasks/delete/{id}(id=${task.id})}" 
+                                          method="post" 
+                                          class="d-inline">
+                                        <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tâches à faire -->
+            <div th:if="${!#lists.isEmpty(tasks)}" class="mb-5" th:with="now=${#temporals.createNow()}">
+                <h2 class="h4 mb-3">Tâches à faire</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Titre</th>
+                                <th>Description</th>
+                                <th>Date d'échéance</th>
+                                <th>Priorité</th>
+                                <th>Catégorie</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="task : ${tasks}" 
+                                th:if="${!task.completed && (task.dueDate == null || task.dueDate.isAfter(now))}">
+                                <td th:text="${task.title}">-</td>
+                                <td th:text="${task.description}">-</td>
+                                <td th:text="${task.dueDate != null ? #temporals.format(task.dueDate, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                <td th:text="${task.priority}">-</td>
+                                <td th:text="${task.category != null ? task.category.name : '-'}">-</td>
+                                <td>
+                                    <a th:href="@{/tasks/edit/{id}(id=${task.id})}" 
+                                       class="btn btn-warning btn-sm">Éditer</a>
+                                    <form th:action="@{/tasks/delete/{id}(id=${task.id})}" 
+                                          method="post" 
+                                          class="d-inline">
+                                        <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tâches terminées -->
+            <div th:if="${!#lists.isEmpty(tasks)}" class="mb-5">
+                <h2 class="h4 text-success mb-3">Tâches terminées</h2>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Titre</th>
+                                <th>Description</th>
+                                <th>Date d'échéance</th>
+                                <th>Priorité</th>
+                                <th>Catégorie</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="task : ${tasks}" th:if="${task.completed}">
+                                <td th:text="${task.title}">-</td>
+                                <td th:text="${task.description}">-</td>
+                                <td th:text="${task.dueDate != null ? #temporals.format(task.dueDate, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                                <td th:text="${task.priority}">-</td>
+                                <td th:text="${task.category != null ? task.category.name : '-'}">-</td>
+                                <td>
+                                    <a th:href="@{/tasks/edit/{id}(id=${task.id})}" 
+                                       class="btn btn-warning btn-sm">Éditer</a>
+                                    <form th:action="@{/tasks/delete/{id}(id=${task.id})}" 
+                                          method="post" 
+                                          class="d-inline">
+                                        <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

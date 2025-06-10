@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${task.id != null} ? 'Éditer Tâche' : 'Nouvelle Tâche'"></title>
+    <title th:text="${task.id != null} ? 'Éditer Tâche' : 'Nouvelle Tâche'">Gestion de tâche</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link th:href="@{/css/style.css}" rel="stylesheet">
 </head>
 <body>
     <button class="toggle-btn">☰</button>
     <nav class="sidebar">
-        <img th:src="${currentUser.profilePicture != null} ? ${currentUser.profilePicture} : '/uploads/default.png'" class="profile-pic" alt="Photo de profil">
+        <img th:src="${currentUser != null && currentUser.profilePicture != null} ? ${currentUser.profilePicture} : '/uploads/default.png'" class="profile-pic" alt="profil" />
         <ul class="nav flex-column">
             <li class="nav-item"><a class="nav-link" th:href="@{/tasks}">Tâches</a></li>
             <li class="nav-item"><a class="nav-link" th:href="@{/categories}">Catégories</a></li>
@@ -20,50 +20,96 @@
     </nav>
     <div class="main-content">
         <div class="container mt-4">
-            <h1 th:text="${task.id != null} ? 'Éditer Tâche' : 'Nouvelle Tâche'"></h1>
+            <h1 th:text="${task.id != null} ? 'Éditer Tâche' : 'Nouvelle Tâche'" class="mb-4">Gestion de tâche</h1>
             <div class="card">
                 <div class="card-body">
                     <form th:action="@{/tasks}" th:object="${task}" method="post">
-                        <input type="hidden" th:field="*{id}"/>
+                        <!-- Champ id caché -->
+                        <input type="hidden" th:field="*{id}" />
+                        
+                        <!-- Titre -->
                         <div class="mb-3">
                             <label for="title" class="form-label">Titre</label>
-                            <input type="text" th:field="*{title}" class="form-control" id="title" required>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="title" 
+                                   th:field="*{title}" 
+                                   required>
+                            <div class="text-danger" 
+                                 th:if="${#fields.hasErrors('title')}" 
+                                 th:errors="*{title}">
+                            </div>
                         </div>
+
+                        <!-- Description -->
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
-                            <textarea th:field="*{description}" class="form-control" id="description" rows="4"></textarea>
+                            <textarea class="form-control" 
+                                      id="description" 
+                                      th:field="*{description}" 
+                                      rows="4">
+                            </textarea>
                         </div>
+
+                        <!-- Date d'échéance -->
                         <div class="mb-3">
                             <label for="dueDate" class="form-label">Date d'échéance</label>
-                            <input type="datetime-local" th:field="*{dueDate}" class="form-control" id="dueDate">
+                            <input type="datetime-local" 
+                                   class="form-control" 
+                                   id="dueDate" 
+                                   th:field="*{dueDate}">
                         </div>
+
+                        <!-- Priorité -->
                         <div class="mb-3">
                             <label for="priority" class="form-label">Priorité</label>
-                            <select th:field="*{priority}" class="form-select" id="priority">
-                                <option value="">Aucune</option>
-                                <option th:each="priority : ${T(com.example.gestiontaches.model.Task$Priority).values()}"
-                                        th:value="${priority}" th:text="${priority}"></option>
+                            <select class="form-select" 
+                                    id="priority" 
+                                    th:field="*{priority}">
+                                <option value="">Sélectionner une priorité</option>
+                                <option value="HIGH">Haute</option>
+                                <option value="MEDIUM">Moyenne</option>
+                                <option value="LOW">Basse</option>
                             </select>
                         </div>
+
+                        <!-- État (Terminé/En cours) -->
                         <div class="mb-3">
-                            <label for="completed" class="form-label">État</label>
-                            <input type="checkbox" th:field="*{completed}" id="completed">
-                            <label for="completed" class="ms-2">Terminée</label>
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input" 
+                                       id="completed" 
+                                       th:field="*{completed}">
+                                <label class="form-check-label" 
+                                       for="completed">Tâche terminée</label>
+                            </div>
                         </div>
+
+                        <!-- Catégorie -->
                         <div class="mb-3">
                             <label for="category" class="form-label">Catégorie</label>
-                            <select th:field="*{category.id}" class="form-select" id="category">
-                                <option value="">Aucune</option>
-                                <option th:each="category : ${categories}" th:value="${category.id}" th:text="${category.name}"></option>
+                            <select class="form-select" 
+                                    id="category" 
+                                    th:field="*{category}">
+                                <option value="">Aucune catégorie</option>
+                                <option th:each="cat : ${categories}"
+                                        th:value="${cat.id}"
+                                        th:text="${cat.name}">
+                                </option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary">Enregistrer</button>
-                        <a th:href="@{/tasks}" class="btn btn-secondary">Annuler</a>
+
+                        <!-- Boutons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Enregistrer</button>
+                            <a th:href="@{/tasks}" class="btn btn-secondary">Annuler</a>
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script th:src="@{/js/script.js}"></script>
 </body>

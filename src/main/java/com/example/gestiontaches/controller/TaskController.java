@@ -1,11 +1,13 @@
 package com.example.gestiontaches.controller;
 
+import com.example.gestiontaches.dto.TaskDTO;
 import com.example.gestiontaches.model.Task;
-import com.example.gestiontaches.model.User;
 import com.example.gestiontaches.service.CategoryService;
 import com.example.gestiontaches.service.TaskService;
 import com.example.gestiontaches.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -18,84 +20,135 @@ import java.util.List;
 @Controller
 @RequestMapping("/tasks")
 public class TaskController {
+    private static final Logger logger = LoggerFactory.getLogger(TaskController.class);
+
+    private final TaskService taskService;
+    private final CategoryService categoryService;
+    private final UserService userService;
 
     @Autowired
-    private TaskService taskService;
-
-    @Autowired
-    private CategoryService categoryService;
-
-    @Autowired
-    private UserService userService;
+    public TaskController(TaskService taskService, CategoryService categoryService, UserService userService) {
+        this.taskService = taskService;
+        this.categoryService = categoryService;
+        this.userService = userService;
+    }
 
     @GetMapping
     public String listTasks(Model model, Authentication auth,
-                            @RequestParam(value = "sort", required = false) String sort,
-                            @RequestParam(value = "search", required = false) String search) {
-        Long userId = getUserId(auth);
-        List<Task> tasks;
+                          @RequestParam(value = "sort", required = false) String sort,
+                          @RequestParam(value = "search", required = false) String search) {
+        try {
+            Long userId = getUserId(auth);
+            List<TaskDTO> tasks;
 
-        if (search != null && !search.isEmpty()) {
-            tasks = taskService.searchTasks(userId, search);
-        } else {
-            tasks = (sort != null && !sort.isEmpty()) ?
-                    taskService.findTasksByUserIdSorted(userId, sort) :
-                    taskService.findTasksByUserId(userId);
+            if (search != null && !search.isEmpty()) {
+                tasks = taskService.searchTasks(userId, search);
+            } else {
+                tasks = (sort != null && !sort.isEmpty()) ?
+                        taskService.findTasksByUserIdSorted(userId, sort) :
+                        taskService.findTasksByUserId(userId);
+            }
+
+            model.addAttribute("tasks", tasks);
+            model.addAttribute("categories", categoryService.findCategoriesByUserId(userId));
+            model.addAttribute("currentUser", userService.findByUsername(auth.getName()));
+            model.addAttribute("sort", sort); // Ajout pour le template
+            model.addAttribute("search", search); // Ajout pour le template
+            return "tasks";
+        } catch (Exception e) {
+            logger.error("Error in listTasks: ", e);
+            model.addAttribute("error", "Une erreur est survenue lors du chargement des tâches.");
+            return "error";
         }
-
-        model.addAttribute("tasks", tasks);
-        model.addAttribute("categories", categoryService.findCategoriesByUserId(userId));
-        model.addAttribute("currentUser", userService.findByUsername(auth.getName()));
-        return "tasks";
     }
 
     @GetMapping("/new")
     public String showTaskForm(Model model, Authentication auth) {
-        model.addAttribute("task", new Task());
-        model.addAttribute("categories", categoryService.findCategoriesByUserId(getUserId(auth)));
-        return "edit-task";
-    }
-
-    @PostMapping
-    public String saveTask(@ModelAttribute Task task, Authentication auth) {
-        task.setUser(userService.findByUsername(auth.getName()));
-        taskService.saveTask(task);
-        return "redirect:/tasks";
+        try {
+            Long userId = getUserId(auth);
+            model.addAttribute("task", new TaskDTO());
+            model.addAttribute("categories", categoryService.findCategoriesByUserId(userId));
+            model.addAttribute("currentUser", userService.findByUsername(auth.getName()));
+            model.addAttribute("priorities", Task.Priority.values()); // Ajout des priorités
+            return "edit-task";
+        } catch (Exception e) {
+            logger.error("Error in showTaskForm: ", e);
+            model.addAttribute("error", "Une erreur est survenue lors de l'affichage du formulaire.");
+            return "error";
+        }
     }
 
     @GetMapping("/edit/{id}")
     public String showEditForm(@PathVariable Long id, Model model, Authentication auth) {
-        Task task = taskService.findTaskById(id);
-        if (task.getUser().getId().equals(getUserId(auth))) {
+        try {
+            Long userId = getUserId(auth);
+            TaskDTO task = taskService.findTaskById(id);
+            
+            if (!task.getUserId().equals(userId)) {
+                return "redirect:/tasks";
+            }
+            
             model.addAttribute("task", task);
-            model.addAttribute("categories", categoryService.findCategoriesByUserId(getUserId(auth)));
+            model.addAttribute("categories", categoryService.findCategoriesByUserId(userId));
+            model.addAttribute("currentUser", userService.findByUsername(auth.getName()));
+            model.addAttribute("priorities", Task.Priority.values()); // Ajout des priorités
             return "edit-task";
+        } catch (Exception e) {
+            logger.error("Error in showEditForm: ", e);
+            model.addAttribute("error", "Une erreur est survenue lors de l'édition de la tâche.");
+            return "error";
         }
-        return "redirect:/tasks";
+    }
+
+    @PostMapping
+    public String saveTask(@ModelAttribute TaskDTO taskDTO,
+                         @RequestParam(required = false) Long categoryId,
+                         Authentication auth) {
+        try {
+            Task task = taskDTO.toTask();
+            task.setUser(userService.findByUsername(auth.getName()));
+            taskService.saveTask(task, categoryId);
+            return "redirect:/tasks";
+        } catch (Exception e) {
+            logger.error("Error in saveTask: ", e);
+            return "redirect:/tasks?error=save";
+        }
     }
 
     @PostMapping("/delete/{id}")
     public String deleteTask(@PathVariable Long id, Authentication auth) {
-        Task task = taskService.findTaskById(id);
-        if (task.getUser().getId().equals(getUserId(auth))) {
-            taskService.deleteTask(id);
+        try {
+            TaskDTO task = taskService.findTaskById(id);
+            if (task.getUserId().equals(getUserId(auth))) {
+                taskService.deleteTask(id);
+            }
+            return "redirect:/tasks";
+        } catch (Exception e) {
+            logger.error("Error in deleteTask: ", e);
+            return "redirect:/tasks?error=delete";
         }
-        return "redirect:/tasks";
     }
 
     @GetMapping("/export")
     public void exportTasks(HttpServletResponse response, Authentication auth) throws IOException {
-        response.setContentType("text/csv");
-        response.setHeader("Content-Disposition", "attachment; filename=tasks.csv");
-        taskService.exportTasksToCsv(getUserId(auth), response.getWriter());
+        try {
+            response.setContentType("text/csv");
+            response.setHeader("Content-Disposition", "attachment; filename=tasks.csv");
+            taskService.exportTasksToCsv(getUserId(auth), response.getWriter());
+        } catch (IOException e) {
+            logger.error("Error in exportTasks: ", e);
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Erreur lors de l'exportation");
+        }
     }
 
     private Long getUserId(Authentication auth) {
-        String username = auth.getName();
-        User user = userService.findByUsername(username);
-        if (user == null) {
-            throw new IllegalStateException("Utilisateur non trouvé : " + username);
-        }
-        return user.getId();
+        return userService.findByUsername(auth.getName()).getId();
+    }
+
+    @ExceptionHandler(Exception.class)
+    public String handleError(Exception e, Model model) {
+        logger.error("Unexpected error: ", e);
+        model.addAttribute("error", "Une erreur inattendue s'est produite.");
+        return "error";
     }
 }
